@@ -62,13 +62,13 @@ int main()
      
      
      for(int i=0;i < 4;i++){
-        printf("\n");
+        //printf("\n");
         n = *(size +i);
         int *A = CreateMatrix(n);
-        PrintMatrix(A, n);
-        printf("\n");
+        //PrintMatrix(A, n);
+        //printf("\n");
         transpose(A,n);
-        PrintMatrix(A, n); 
+        //PrintMatrix(A, n); 
         gettimeofday(&end, NULL);
         printf("time - %ld\n", ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)));
      }
