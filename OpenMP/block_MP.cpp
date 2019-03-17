@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cstdlib>
-#include <pthread.h>
+#include <omp.h>
 #include <vector>
 #include <time.h>
 #include <sys/time.h>
@@ -9,14 +9,12 @@ using namespace std;
 
 using tensor = vector <vector<long int>>;
 
-int block_len=2;    // length of inner blocks
-long int size_mat =8;
+const int block_len=2;  // length of inner blocks
 tensor _MAT;
 const int NUM_THREADS=8;
 int next_pos=NUM_THREADS;
-pthread_mutex_t lock;
 
-void CreateMatrix(){
+void CreateMatrix(long int size_mat){
     long int val=1;
     vector<long int> num_;
 
@@ -30,7 +28,7 @@ void CreateMatrix(){
        }
 }
 
-void PrintMatrix(){
+void PrintMatrix(long int size_mat){
       for (int i=0;i<size_mat;i++){
          for (int j=0;j<size_mat;j++){
                 cout << _MAT[i][j]<<"  ";
@@ -75,69 +73,67 @@ void transpose(tensor& arr){        // normal transpose algorithm
     }
 }
 
-void* transpose_blocks(void* ind_){        // transposing inside of all blocks in matrix (part 1)
-    
-    long local;
-    local = (long) ind_;
-
+void transpose_blocks(long int size_mat){        // transposing inside of all blocks in matrix (part 1)
+    int thread_counter =0;
+  #pragma omp parallel shared (thread_counter) num_threads(NUM_THREADS)
+    { 
+    long local=thread_counter;
+    thread_counter++;
     int pos;
     int posY=0;
     int tmp = size_mat/block_len;
     int x;
     tensor block;
-
+   
     while (1){
         pos = (block_len*local)%size_mat;
         x = local/tmp;
         posY = x*block_len;
-        
         if (posY>=size_mat){ break;}
-
         block = getSubMatrix(posY,pos);
         transpose(block);
         setSubMatrix(posY,pos,block);
 
-        pthread_mutex_lock(&lock);
+        #pragma omp critical
+        {
             local= next_pos;
-            next_pos++; 
-       	pthread_mutex_unlock(&lock);
-    
+            next_pos++; }
+	  }
     }
+    
 
 }
 
-void* shuffle(void* ind_){             // transposing actual blocks (part 2)
+void shuffle(long int size_mat){        // transposing actual blocks (part 2)
+
+    #pragma omp parallel num_threads(NUM_THREADS)
+    {
       for (int i=0;i<size_mat;i+=block_len){
-        for (int j=i;j<size_mat;j+=block_len){
-            tensor block = getSubMatrix(i,j);
-            tensor block2 = getSubMatrix(j,i);
-            setSubMatrix(i,j,block2);
-            setSubMatrix(j,i,block);
-        }
+         #pragma omp for schedule(static,size_mat) nowait
+            for (int j=i;j<size_mat;j+=block_len){
+                tensor block = getSubMatrix(i,j);
+                tensor block2 = getSubMatrix(j,i);
+                setSubMatrix(i,j,block2);
+                setSubMatrix(j,i,block);
+            }         
       }
+    }
 }
 
 int main(){
+    long int size[5] = {8,128,1024,2048,4096}; // test sizes
+    struct timeval start, end;
     
-    CreateMatrix();
-    pthread_t threads[NUM_THREADS];
-    int index[NUM_THREADS];
-
-    for (int i=0; i<NUM_THREADS;i++){
-        index[i]=i;
-        pthread_create(&threads[i],NULL,transpose_blocks,(void*)index[i]);
-    }
-    
-    for (int i=0; i<NUM_THREADS;i++){
-        pthread_join(threads[i],NULL);      // waiting for all blocks to be transposed
-    }
-
-     for (int i=0; i<NUM_THREADS;i++){
-        index[i]=i;
-        pthread_create(&threads[i],NULL,shuffle,(void*)index[i]);
-    }
-   // shuffle();
- //   PrintMatrix();
+    int i=0;        // Have to run 1 at a time
+   // for (int i=0; i<4; i++){
+    CreateMatrix(size[i]);
+    gettimeofday(&start, NULL);
+    transpose_blocks(size[i]);
+    shuffle(size[i]);
+    gettimeofday(&end, NULL);
+    cout << "time - "<< ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec))<<endl;
+    PrintMatrix(size[i]);
+   // }
     
     return 0;
 }

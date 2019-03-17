@@ -5,9 +5,9 @@
 #include <pthread.h>
 
 pthread_mutex_t lock; 
-int Sizes[1] = {8};//, 1024, 2048 ,4096}; 
+int Sizes[4] = {128, 1024, 2048 ,4096}; 
 int size_mat;
-int NUM_THREADS = 10;
+int NUM_THREADS = 8;
 int next_pos = 1;
 int *arr;
 
@@ -82,30 +82,32 @@ int PrintMatrix(int *pMat){
 
 
 int main(){
-	
-	for(int i=0;i < 1;i++){
-	
-	        size_mat = Sizes[i];
+       size_mat = Sizes[2];
 
-	        pthread_t threads[size_mat];
-	        struct details args[NUM_THREADS];
-	        struct timeval start, end;
+       pthread_t threads[size_mat];
+       struct details args[NUM_THREADS];
+       struct timeval start, end;
 	        
-                arr = CreateMatrix(size_mat);
-        
-                gettimeofday(&start, NULL);
-
-
-	                for(int i=0;i<NUM_THREADS;i++){
-	                        args[i].index = i;
-		                pthread_create(&threads[i],NULL, transpose,(void*) &args); // create 8 threads 
-
-	                }
+       arr = CreateMatrix(size_mat);
                 
-                gettimeofday(&end, NULL);
-                printf("time - %ld\n", ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)));
-	        PrintMatrix(arr);
+      // PrintMatrix(arr);
+      // printf("\n");
+       
+       gettimeofday(&start, NULL);
+
+	for(int i=0;i<NUM_THREADS;i++){
+	    args[i].index = i;
+	    pthread_create(&threads[i],NULL, transpose,(void*) &args); // create 8 threads 
+
 	}
-	exit(0);
+                    
+       for(int i=0;i<NUM_THREADS;i++){
+		pthread_join(threads[i],NULL); // create 8 threads 
+
+	}
+       gettimeofday(&end, NULL);
+       printf("time - %ld\n", ((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec)));
+       //PrintMatrix(arr);
+       exit(0);
 
 }

@@ -24,7 +24,7 @@ int PrintMatrix(int *arr, int size){
     int i,j;
     
     for (i = 0; i <  size; i++){
-         for (j = 0; j < size; j++) {
+         for (j = 0; j < size; j++){
          printf("%d ", *(arr + i*size + j)); 
         }
          printf("\n");
@@ -58,7 +58,7 @@ int main()
      int n;
      
      struct timeval start, end;
-     gettimeofday(&start, NULL);
+     
      
      
      for(int i=0;i < 4;i++){
@@ -67,6 +67,7 @@ int main()
         int *A = CreateMatrix(n);
         //PrintMatrix(A, n);
         //printf("\n");
+        gettimeofday(&start, NULL);
         transpose(A,n);
         //PrintMatrix(A, n); 
         gettimeofday(&end, NULL);

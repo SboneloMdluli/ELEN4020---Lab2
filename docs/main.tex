@@ -1,0 +1,81 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[10pt,journal]{article}
+\input{structure.tex} 
+\usepackage[ruled,vlined]{algorithm2e}
+\title{	
+	\normalfont\largesize
+	\textbf{\textsc{University of the Witwatersrand, Johannesburg}}\\
+	\textsc{School of Electrical and Information Engineering}\\ 
+	\vspace{5pt} % Whitespace
+	\rule{\linewidth}{0.5pt}\\ % Thin top horizontal rule
+	\vspace{10pt} % Whitespace
+	{\huge ELEN4020A: Data Intensive Computing: Lab 2}\\ % The assignment title
+	\vspace{1pt} % Whitespace
+	\rule{\linewidth}{2pt}\\ % Thick bottom horizontal rule
+	\vspace{1pt} % Whitespace
+}
+
+\author{ Sbonelo Mdluli(1101772), Heemal Ryan(792656), Haroon Rehman(1438756) } 
+
+\date{\large\today}
+
+\begin{document}
+\maketitle 
+
+\section{Introduction}
+Matrix transposition is a key operation in various scientific and mathematical applications. Matrix transposition converts a M-rows-by-N columns array to a N-rows-by-M columns array. This lab introduces students to parallel programming through the use of Pthread and OpenMP libraries. Matrix transposition of large matrices can be a time and space expensive operation. Parallelism is used to improve the performance of the operation and to improve space requirement matrix transposition is to be done in place. This report will discuss the different matrix transposition algorithms that are developed with their performance for a 2D matrix with varying dimensions. 
+
+\section{Matrix Transpose Algorithms}
+
+The generated matrix is stored using row major ordering in a 1-D array with the exception of the block algorithm which uses C++ vectors to store the 2-D matrix. The use of vectors allows for a more efficient memory usage and most importantly to extract sub-matrices from the main matrix with ease. This is especially useful for block-oriented transposition.   
+
+\subsection{Basic}
+
+The basic matrix transpose algorithm sections the matrix into a lower and an upper triangle about the principal diagonal. The principal diagonal is is never transposed as it remains unchanged even when transposed. The algorithm uses two nested for loops, the outer and inner for loops specify an element in the upper triangle and the corresponding element in the lower triangle is determined based on the index of the element is the upper matrix.
+
+\subsection{Block}
+
+Initially recursion used to perform the block transpose algorithm however this implementation was later changed as recursion is memory intensive and defeated the purpose of the lab. The algorithm used here entails a twofold process. Firstly, contiguous square sub-matrices of certain length from the main matrix are extracted. These sub-matrices are transposed independently, and placed back into the main matrix. Secondly, after all the sub-matrices are transposed, the main matrix is transposed "block" wise as normal matrix transposition. These blocks are of the same length as the sub-matrices mentioned in part 1. 
+
+\subsection{Diagonal}
+
+The diagonal algorithms uses the basic matrix transpose for its functionality. This algorithm also makes uses of two nested for loops, however the outer for loop starts at a specified diagonal. The diagonal is not specified using the array index but can be accessed numerically with the top left diagonal equal to zero. The transposition only takes place at the diagonal where the row and column intersect. 
+
+\section{Pthreads}
+
+POSIX threads are used to achieve parallelism in shared memory. Pthreads provide the programmer with a lot of freedom and allows one to produce portable multithreded code. 
+
+\subsection{Diagonal-Threading}
+The algorithm makes use of 8 Threads which were determined to be the most efficient when compared to other variations. Initially all 8 threads will be assigned to work on specified diagonal corresponding to its thread id. Once a thread has finished transposing it increments a global variable \textit {next\_pos} which is used to communicate the next available diagonal. To avoid race conditions \textit {pthread\_mutex\_lock} is used to only allowed one thread to update this variable at a time. The threads terminate once \textit {next\_pos} is equal to the size of the matrix. Structs were used to better represent the information the threads needed to work properly. 
+
+\newline 
+
+\subsection{Block-Oriented}
+In this lab, tensors are restricted to $n$ dimensional square tensors which simplifies the multiplication computation. An empty  $2\times 2$ matrix of size 
+
+\section{OpenMP}
+
+
+
+\subsection{Naive}
+
+
+\subsection{Diagnoal-Threading}
+Tensor addition of tensor A and tensor B is referred to as the addition corresponding elements to result a tensor of same dimensions as A and B. In this case n=2, so therefore the addition of each corresponding elements in the two  $2\times 2$ matrices gives the resultant  $2\times 2$ matrix. The use of for loops allows for the correct addition to occur. The procedure is detailed by algorithm 1. The rank2TensorAdd algorithm has a worst-case running time of $\mathcal{O}(n^2)$.
+
+\subsection{Block-Oriented}
+In this lab, tensors are restricted to $n$ dimensional square tensors which simplifies some aspects of the computation. The An empty  $2\times 2$ matrix of size equal to the one of the matrices being added is created. The resultant values are stored in the empty matrix. Equation describes tensor multiplication of  $2\times 2$ matrices and how each element is generated in the resultant matrix.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}\
+
+
+\section{Conclusion}\
+
+
+One can further verify the results using numpy for the rank2Tensor procedures. From the algorithm analysis it is evident that computationally complexity increases with the rank and dimensions of the tensor. The procedures developed in this lab are presented for $n\times n$ or $n\times n\times n$ however modifications may be made to make them more flexible to work in varying dimensions.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
