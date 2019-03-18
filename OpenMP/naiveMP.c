@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-const int NUM_THREADS = 4;
+const int NUM_THREADS = 8;
 
 int *CreateMatrix(int size){
         

@@ -2,6 +2,7 @@
 \documentclass[10pt,journal]{article}
 \input{structure.tex} 
 \usepackage[ruled,vlined]{algorithm2e}
+\usepackage{multirow}
 \title{	
 	\normalfont\largesize
 	\textbf{\textsc{University of the Witwatersrand, Johannesburg}}\\
@@ -51,17 +52,23 @@ The algorithm makes use of 8 Threads which were determined to be the most effici
 \newline 
 
 \subsection{Block-Oriented}
-In this lab, tensors are restricted to $n$ dimensional square tensors which simplifies the multiplication computation. An empty  $2\times 2$ matrix of size 
 
 \section{OpenMP}
 
-
+Open specifications for Multi Processing (OpenMP) offers a high level shared memory parallelism model compared to pthreads. OpenMP is based on the fork-join execution model that is at the beginning of a program the master thread executes and forks whenever there is a parallel block. OpenMP is often easier to use compared to pthreads since the compiler does most of the low level work.
 
 \subsection{Naive}
+The naive implementation of the matrix transposition algorithm is heavily based on the basic algorithm. To parallelize the nested for-loops two compiler directives are used namely :
+\newline
+{\#pragma omp parallel shared(arr) private( i, j) num_threads(NUM\_THREADS) } 
+\newline
+{\#pragma omp for schedule(static,size)  nowait}
+\newline
 
+The first directive parallelizes the nested loops, variable \textit{i}, \textit{j} are made private for each thread to ensure that the threads perform independent transposition. We use schedule because we have a work sharing for-loop. Nowait is used to instruct the thread to continue computing the next transpose
 
 \subsection{Diagnoal-Threading}
-Tensor addition of tensor A and tensor B is referred to as the addition corresponding elements to result a tensor of same dimensions as A and B. In this case n=2, so therefore the addition of each corresponding elements in the two  $2\times 2$ matrices gives the resultant  $2\times 2$ matrix. The use of for loops allows for the correct addition to occur. The procedure is detailed by algorithm 1. The rank2TensorAdd algorithm has a worst-case running time of $\mathcal{O}(n^2)$.
+The diagonal version of the version in OpenMP shares great similarities with that naive implementation with the exception that scheduling is dynamic and each thread works on a chunk of size one. The scheduling was changed to dynamic as the static one is less efficient and dynamic scheduling allowed a thread to move on to the next task once it finished its execution.
 
 \subsection{Block-Oriented}
 In this lab, tensors are restricted to $n$ dimensional square tensors which simplifies some aspects of the computation. The An empty  $2\times 2$ matrix of size equal to the one of the matrices being added is created. The resultant values are stored in the empty matrix. Equation describes tensor multiplication of  $2\times 2$ matrices and how each element is generated in the resultant matrix.
@@ -69,13 +76,438 @@ In this lab, tensors are restricted to $n$ dimensional square tensors which simp
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}\
+% Please add the following required packages to your document preamble:
 
+\begin{table}[]
+\caption{\label{tab:table-name}Algorithm Benchmark running time}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+
+\hline
+
+\multirow{2}{*}{\textbf{$N_{0}=N_{1}$}} & \textbf{Basic} & \multicolumn{2}{c|}{\textbf{Pthreads}} & \multicolumn{3}{c|}{\textbf{OpenMP}} \\ \cline{2-7} 
+                                    &                & Diagonal           & Blocked           & Naive       & Diagonal            & Blocked           \\ \hline
+\textbf{128}                        & 0.156 ms       & 0.613 ms           & 8.889 ms          &             & 3.253 ms            & 9.615 ms          \\ \hline
+\textbf{1024}                       & 4.471 ms       & 2.165 ms           & 0.345 s          &             & 16.84 ms            & 0.350 s          \\ \hline
+\textbf{2048}                       & 37.70 ms       & 8.457 ms           & 1.387 s           &             & 76.67 ms            & 1.398 s           \\ \hline
+\textbf{4096}                       & 0.233 s        & 44.62ms            & 5.415 s           &             & 0.321 s             & 5.465 s           \\ \hline
+\end{tabular}
+\end{table}
 
 \section{Conclusion}\
 
-
+\justify
 One can further verify the results using numpy for the rank2Tensor procedures. From the algorithm analysis it is evident that computationally complexity increases with the rank and dimensions of the tensor. The procedures developed in this lab are presented for $n\times n$ or $n\times n\times n$ however modifications may be made to make them more flexible to work in varying dimensions.
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+\newpage
+\section{Appendix}
+\subsection{General Function Used Across Algorithms}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Swap}\\
+Input arguments:\: int* num1, int* num2\\
+
+\vspace{10pt} 
+Initialization\:long int temp = 0\\
+     temp = *num\\
+    *num1 = *num2\\
+    *num2 = temp\\
+
+\caption{Void Swap Function}
+\end{algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Naive Approach}
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*CreateMatrix}\\
+Input arguments:\:matrixSize\\
+
+Initialization\::\\ 
+ int *arr = (int *)calloc(matrixSize * matrixSize, sizeof(int))\\
+ val = 1
+ 
+\vspace{10pt} 
+\For{i=0  to size-1}{
+    \For{j= 0 to size-1}{*(arr + i*size + j) = val++\\
+}}
+
+\caption{Void Function to Create and Populate Input Matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Transpose}\\
+Input arguments:\: int* arr, int matrixSize \\
+
+\vspace{10pt} 
+\For{i=0  to size-1}{
+    \For{j= 0 to size-1}{swap( (arr + i*matrixSize +j), (arr + j*matrixSize +i)\\
+}}
+
+\caption{Void Transpose Function}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Diagonal Approach - PThreads}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textbf{Global Variables:} \\
+int NumberOfThreads = 8\\
+int nextPosition = 1\\
+int *arr\\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*CreateMatrix}\\
+Initialization\::\\
+int *C = (int *)calloc(matrixSize * matrixSize, sizeof(int))\\
+val = 1
+
+\vspace{10pt} 
+\For{i=0  to size-1}{
+    \For{j= 0 to size-1}{ *(C + i*matrixSize + j) = val++
+}}
+\Return C
+\caption{int Function to Create and Populate Input Matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*Transpose}\\
+Initialization\::\\
+struct details* local = args\\
+pos= 0, n= 0, nextPosition= 1\\
+
+\vspace{10pt} 
+\While{pos < matrixSize}{pos = local->index\\
+    \For{i=pos  to matrixSize-1}{
+        \For{j = pos+1 to matrixSize-1}{swap((arr + pos*matrixSize + j),(arr + j*matrixSize + pos))\\
+        }break
+    }
+    \textbf{pthreadmMutexLock(\&lock)}\\
+	n = nextPosition++\\
+	local->index = n\\
+	\textbf{pthreadMutexUnlock(\&lock)}\\
+    
+}
+\caption{Void Transpose Function}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Main Function}\\
+Initialization\::\\
+matrixSize={128, 1024, 2048 ,4096}\\
+struct details args[NumberOfThreads]\\
+pthread-t threads[matrixSize]\\
+
+\vspace{3pt} 
+\textbf{Call to Create\::}\\
+arr = CreateMatrix(matrixSize)\\
+
+\vspace{10pt} 
+\For{i=0  to NumberOfThreads}{
+     args[i].index = i\\
+	 \textbf{pthread-create(\&threads[i],NULL, transpose,(void*) \&args)}\\
+}
+
+\vspace{10pt} 
+\For{i=0  to NumberOfThreads}{
+     args[i].index = i\\
+	 \textbf{pthread-join(threads[i],NULL)}\\
+}
+exit(0)
+
+\caption{Main Function - PThreads}
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Diagonal Approach - OpenMP}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textbf{Global Variables:} \\
+int NumberOfThreads = 8\\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*CreateMatrix}\\
+Input arguments:\:matrixSize\\
+Initialization\::\\
+int *arr = (int *)calloc(size * size, sizeof(int))\\
+val = 1;
+
+\vspace{10pt} 
+\textbf{pragma omp for schedule (static, size)}\\
+\For{i=0  to size-1}{
+    \For{j= 0 to size-1}{*(arr + i*size + j) = val++
+}}
+\Return arr
+\caption{int Function to Create and Populate Input Matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*Transpose}\\
+Input arguments:\:matrixSize, int*arr\\
+Initialization\::pos= 0,\\
+
+\vspace{10pt} 
+\While{pos < matrixSize}{pos = local->index\\
+\textbf{pragma omp parallel shared(pos) private( i, j) num-threads(NumberOfThreads}\\ 
+    \For{i=pos  to matrixSize-1}{
+        \For{j = pos+1 to matrixSize-1}{swap((arr + pos*matrixSize + j),(arr + j*matrixSize + pos))\\
+        }break
+    }
+    \textbf{pragma omp critical}{pos++;}
+
+}
+\caption{Void Transpose Function}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Main Function}\\
+Initialization\::\\
+matrixSize={128, 1024, 2048 ,4096}\\
+
+\vspace{10pt} 
+\For{i=0  to 3}{n = *(size +i)\\ 
+                int *A = CreateMatrix(n)\\
+                transpose(A,n)\\
+}
+ exit(0)
+\caption{Main Function - OpenMP}
+\end{algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Commonly Used Functions in Block Algorithm}
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{void createMatrix}\\
+Initialization\::long int val=1, vector<long int> num\\
+
+\vspace{10pt} 
+\For{i=0  to matrixSize-1}{
+    \For{j= 0 to matrixSize-1}{
+            num.pushBack(val)\\
+            val++\\
+}MATRIX.pushBack(num);
+           num.clear();}
+\caption{Void Function to Create and Populate Input Matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{tensor getSubMatrix}\\
+Input arguments:\: int A, int B\\
+Initialization\::\\tensor sub(block-len,vector<long int>(block-len))\\
+
+\vspace{10pt} 
+\For{i=0  to block-length}{
+    \For{j= 0 to block-length}{sub[i][j] = MATRIX[A+i][B+j]\\
+}}
+\caption{Void Function to get SubMatrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{tensor setSubMatrix}\\
+Input arguments:\: int A, int B, tensor Block\\
+
+\vspace{10pt} 
+\For{i=0  to block-length}{
+    \For{j= 0 to block-length}{MATRIX[A+i][B+j]=block[i][j]\\
+}}
+\caption{Void Function to set SubMatrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{void transpose}\\
+Input arguments:\: int matrixSize\\
+Initialization\:: size = arr.size()\\
+
+\vspace{10pt} 
+\For{i=0  to matrixSize-1}{
+    \For{j= 0 to matrixSize-1}{swap(arr[i][j],arr[j][i])\\
+}}
+\caption{Void Function to perform normal 2D x 2D Transformations}
+\end{algorithm}
+
+\subsection{Block Approach - OpenMP}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\textbf{Global Variables:} \\
+
+using tensor = vector <vector<long int>>\\
+int block-len=2\\
+long int size-mat = 8\\
+tensor MATRIX\\
+const int NumberOfThreads=8\\
+int nextPosition=NumberOfThreads\\
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{void shuffle}\\
+
+\vspace{10pt} 
+    \textbf{pragma omp parallel num-threads(NUM-THREADS)}
+
+\For{i=0  to matrixSize-1}{i+=block-length\\
+    \textbf{pragma omp for schedule(static,size-mat) nowait}
+    \For{j= 0 to matrixSize-1}{j+=block-length\\
+            tensor block = getSubMatrix(i,j)\\
+            tensor block2 = getSubMatrix(j,i)\\
+            setSubMatrix(i,j,block2)\\
+            setSubMatrix(j,i,block)\\
+}}
+\caption{Void Function to Transpose actual bigger blocks}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*void transpose-blocks}\\
+Initialization\::int thread-counter = 0\\
+    long local = thread-counter\\
+    thread-counter++, int pos = 0\\
+    int posY = 0 , int tmp = size-mat/block-len\\
+    int x = 0 , tensor block\\
+
+\vspace{10pt} 
+\textbf{pragma omp parallel shared (thread-counter) num-threads(NumberOfThreads)}\\
+\While{1}{
+        pos = (block-len*local)\\
+        x = local/tmp\\
+        posY = x*block-len\\
+        \eIf {posY >= size-mat}{break}{\\
+        block = getSubMatrix(posY,pos)\\
+        transpose(block)\\
+        setSubMatrix(posY,pos,block)\\
+
+        \textbf{pragma omp critical}\\
+            local= next-pos\\
+            next-pos++
+	  }
+}
+\caption{Void Transpose Function: Transposes all inner blocks of matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Main Function}\\
+\textbf{Call to Create\::}\\
+CreateMatrix()\\
+transpose-blocks()\\
+shuffle()\\
+\Return(0)\\
+
+\caption{Main Function - OpenMP}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Block Approach - PThreads}
+\textbf{Global Variables:} \\
+int block-len=2\\
+long int size-mat =8\\
+tensor MATRIX\\
+const int NUM-THREADS=8\\
+int next-pos=NUM-THREADS\\
+pthread-mutex-t lock\\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{void shuffle}\\
+
+\vspace{10pt} 
+\For{i=0  to matrixSize-1}{i+=block-length\\
+    \For{j= 0 to matrixSize-1}{j+=block-length\\
+            tensor block = getSubMatrix(i,j)\\
+            tensor block2 = getSubMatrix(j,i)\\
+            setSubMatrix(i,j,block2)\\
+            setSubMatrix(j,i,block)\\
+}}
+\caption{Void Function to Transpose actual bigger blocks}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{*void transpose-blocks}\\
+Initialization\::int thread-counter = 0\\
+    long local = thread-counter\\
+    thread-counter++, int pos = 0\\
+    int posY = 0 , int tmp = size-mat/block-len\\
+    int x = 0 , tensor block\\
+
+\vspace{10pt} 
+
+\While{1}{
+        pos = (block-len*local)\\
+        x = local/tmp\\
+        posY = x*block-len\\
+        \eIf {posY >= size-mat}{break}{\\
+        block = getSubMatrix(posY,pos)\\
+        transpose(block)\\
+        setSubMatrix(posY,pos,block)\\
+
+        \textbf{pthread-mutex-lock(\&lock)}\\
+            local= next-pos\\
+            next-pos++\\
+        \textbf{pthread-mutex-unlock(&lock)}
+	  }
+}
+\caption{Void Transpose Function: Transposes all inner blocks of matrix}
+\end{algorithm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{algorithm}[H]
+\SetAlgoLined
+\textbf{Function name:} \emph{Main Function}\\
+\textbf{Call to Create\::}\\
+CreateMatrix()\\
+Initialization\::int index[NUM-THREADS]\\
+
+\textbf{pthread-t threads[NUM-THREADS]}
+
+\vspace{10pt} 
+\For{i=0  to NUM-THREADS-1}{
+index[i]=i\\
+pthread-create(&threads[i],NULL,transpose-blocks,(void*)index[i])\\
+}
+\For{i=0  to NUM-THREADS-1}{
+pthread-join(threads[i],NULL)\\
+}
+\Return(0)\\
+
+\caption{Main Function - PThreads}
+\end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 \end{document}
