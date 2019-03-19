@@ -45,10 +45,9 @@ void swap(int* num1, int* num2)
 void transpose(int *arr,int size){
 
     int i,j;
-  
-    #pragma omp parallel shared(arr) private( i, j) num_threads(NUM_THREADS) 
+    #pragma omp parallel private(i, j) num_threads(NUM_THREADS) 
     for (i = 0; i < size; i++) {
-        #pragma omp for schedule(static,size)  nowait
+        #pragma omp for schedule(dynamic)  nowait
             for (j = i+1; j < size; j++) {
                    swap((arr + i*size + j),(arr + j*size + i));
             }
@@ -62,8 +61,6 @@ int main()
      int n;
      
      struct timeval start, end;
-     gettimeofday(&start, NULL);
-     
      
      for(int i=0;i < 4;i++){
         //printf("\n");
@@ -71,6 +68,7 @@ int main()
         int *A = CreateMatrix(n);
         //PrintMatrix(A, n);
         //printf("\n");
+        gettimeofday(&start, NULL);
         transpose(A,n);
       //  PrintMatrix(A, n); 
         gettimeofday(&end, NULL);

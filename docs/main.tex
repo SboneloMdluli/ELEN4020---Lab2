@@ -2,6 +2,7 @@
 \documentclass[10pt,journal]{article}
 \input{structure.tex} 
 \usepackage[ruled,vlined]{algorithm2e}
+\usepackage{float}
 \usepackage{multirow}
 \title{	
 	\normalfont\largesize
@@ -28,7 +29,7 @@ Matrix transposition is a key operation in various scientific and mathematical a
 
 \section{Matrix Transpose Algorithms}
 
-The generated matrix is stored using row major ordering in a 1-D array with the exception of the block algorithm which uses C++ vectors to store the 2-D matrix. The use of vectors allows for a more efficient memory usage and most importantly to extract sub-matrices from the main matrix with ease. This is especially useful for block-oriented transposition.   
+The generated matrix is stored using row major ordering in a 1-D array with the exception of the block algorithm which uses 2-D arrays in C++ to store the matrix. This is especially useful for block-oriented transposition as it is easier to conceptualize smaller sub-matrices within a larger matrix. The use of arrays allows for element access in almost constant time resulting in relatively faster run times (compared to using C++ vector), which is the prime focus of this lab.    
 
 \subsection{Basic}
 
@@ -47,11 +48,12 @@ The diagonal algorithms uses the basic matrix transpose for its functionality. T
 POSIX threads are used to achieve parallelism in shared memory. Pthreads provide the programmer with a lot of freedom and allows one to produce portable multithreded code. 
 
 \subsection{Diagonal-Threading}
-The algorithm makes use of 8 Threads which were determined to be the most efficient when compared to other variations. Initially all 8 threads will be assigned to work on specified diagonal corresponding to its thread id. Once a thread has finished transposing it increments a global variable \textit {next\_pos} which is used to communicate the next available diagonal. To avoid race conditions \textit {pthread\_mutex\_lock} is used to only allowed one thread to update this variable at a time. The threads terminate once \textit {next\_pos} is equal to the size of the matrix. Structs were used to better represent the information the threads needed to work properly. 
+ Initially all threads will be assigned to work on specified diagonal corresponding to its thread id. Once a thread has finished transposing it increments a global variable \textit {next\_pos} which is used to communicate the next available diagonal. To avoid race conditions \textit {pthread\_mutex\_lock} is used to only allowed one thread to update this variable at a time. The threads terminate once \textit {next\_pos} is equal to the size of the matrix. Structs were used to better represent the information the threads needed to work properly. The pseudo-code for this method is shown under section A.3 in Appendix A. 
 
 \newline 
 
 \subsection{Block-Oriented}
+Here each thread works on a certain "block" within the main matrix corresponding to its thread number. Through this, each thread extracts a sub-matrix (which is a 2-D array as well), transposes it using the basic algorithm and then puts it back into the main matrix. Then, similarly to the diagonal method, a global variable \textit {next\_pos} is used to communicate the next available block. To avoid race conditions \textit {pthread\_mutex\_lock} is used to only allowed one thread to update this variable at a time. The threads terminate once \textit {next\_pos} reaches the last column of the last row block-wise. In the last part, these blocks are transposed using the basic transpose method, however now 2-D arrays are being swapped. This part does not involve any threads unfortunately due to time constraints. The pseudo-code for this method is shown under section A.7 in Appendix A. 
 
 \section{OpenMP}
 
@@ -65,20 +67,21 @@ The naive implementation of the matrix transposition algorithm is heavily based 
 {\#pragma omp for schedule(static,size)  nowait}
 \newline
 
-The first directive parallelizes the nested loops, variable \textit{i}, \textit{j} are made private for each thread to ensure that the threads perform independent transposition. We use schedule because we have a work sharing for-loop. Nowait is used to instruct the thread to continue computing the next transpose
+The first directive parallelizes the nested loops, variable \textit{i}, \textit{j} are made private for each thread to ensure that the threads perform independent transposition. We use schedule because we have a work sharing for-loop. Nowait is used to instruct the thread to continue computing the next transpose.
 
-\subsection{Diagnoal-Threading}
-The diagonal version of the version in OpenMP shares great similarities with that naive implementation with the exception that scheduling is dynamic and each thread works on a chunk of size one. The scheduling was changed to dynamic as the static one is less efficient and dynamic scheduling allowed a thread to move on to the next task once it finished its execution.
+\subsection{Diagonal-Threading}
+The diagonal version of the version in OpenMP shares great similarities with that naive implementation with the exception that scheduling is dynamic and each thread works on a chunk of size one. The scheduling was changed to dynamic as the static one is less efficient and dynamic scheduling allowed a thread to move on to the next task once it finished its execution. The pseudo-code for this method is shown under section A.4 in Appendix A. 
 
 \subsection{Block-Oriented}
-In this lab, tensors are restricted to $n$ dimensional square tensors which simplifies some aspects of the computation. The An empty  $2\times 2$ matrix of size equal to the one of the matrices being added is created. The resultant values are stored in the empty matrix. Equation describes tensor multiplication of  $2\times 2$ matrices and how each element is generated in the resultant matrix.
-
+The implementation of the block-oriented transposition with OpenMP is almost identical to that of the pthread implementation. The only difference is the way threads are created. Another difference is that the second part of the transposition incorporates multi-threading whereas the pthread method did not. The second part is also almost identical to the naive OpenMP implementation, with a slight change to "block" transposition rather than element transposition. The pseudo-code for this method is shown under section A.6 in Appendix A. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Results}\
+\section{Results and Analysis}\
 % Please add the following required packages to your document preamble:
+Table 5.1 contains the results for the different algorithms discussed in the previous sections. The code for each algorithm are run on computers with the same specifications. Some of these are: Windows 10, Intel Core i7-6700 CPU with 3.41 GHz speed and 4 cores with 8 logical processors.
 
-\begin{table}[]
+\begin{table}
+\centering
 \caption{\label{tab:table-name}Algorithm Benchmark running time}
 \begin{tabular}{|c|c|c|c|c|c|c|}
 
@@ -86,19 +89,42 @@ In this lab, tensors are restricted to $n$ dimensional square tensors which simp
 
 \multirow{2}{*}{\textbf{$N_{0}=N_{1}$}} & \textbf{Basic} & \multicolumn{2}{c|}{\textbf{Pthreads}} & \multicolumn{3}{c|}{\textbf{OpenMP}} \\ \cline{2-7} 
                                     &                & Diagonal           & Blocked           & Naive       & Diagonal            & Blocked           \\ \hline
-\textbf{128}                        & 0.156 ms       & 0.613 ms           & 8.889 ms          &             & 3.253 ms            & 9.615 ms          \\ \hline
-\textbf{1024}                       & 4.471 ms       & 2.165 ms           & 0.345 s          &             & 16.84 ms            & 0.350 s          \\ \hline
-\textbf{2048}                       & 37.70 ms       & 8.457 ms           & 1.387 s           &             & 76.67 ms            & 1.398 s           \\ \hline
-\textbf{4096}                       & 0.233 s        & 44.62ms            & 5.415 s           &             & 0.321 s             & 5.465 s           \\ \hline
+\textbf{128}                        & 0.156 ms       & 0.613 ms           & 1.557 ms          & 1.873 ms       & 3.253 ms            & 3.738 ms          \\ \hline
+\textbf{1024}                       & 4.471 ms       & 2.165 ms           & 8.325 ms          & 8.554 ms           & 16.84 ms            & 11.48 ms          \\ \hline
+\textbf{2048}                       & 37.70 ms       & 8.457 ms           & 27.54 ms          & 45.38 ms             & 76.67 ms            & 30.58 ms           \\ \hline
+\textbf{4096}                       & 0.233 s        & 44.62 ms            & 0.104 s          & 0.283 s            & 0.321 s             & 0.105 s           \\ \hline
 \end{tabular}
 \end{table}
 
-\section{Conclusion}\
+
+The blocked algorithm was tested using square blocks of length 64. Furthermore, all the multi-threaded algorithms used a constant number of 8 threads. Besides both the block algorithm implementations (pthreads and OpenMP) which were coded in C++, the rest were coded in C. The code is intended to be as scalable as possible through allowance to change the number of threads, the size of the matrix and the length of the blocks for the blocked algorithm. 
+\newline
+
+After testing, it is noticed that using larger block sizes increases the speed, however only to a certain degree. It is also observed that the size of the main matrix plays the fundamental role in the speeds, which is expected. However, looking at the results in table 5.1, the use of different algorithms and multi-threading as compared to the basic method do not necessarily increase the speed of computations. But it is also noticeable that as the size of the matrix increases, the use of other algorithms and multi-threading do begin to outperform the basic algorithm. The diagonal pthread implementation is seen to be the fastest for the largest matrix by a order of 10 compared to the others.\\
+
+\section{Conclusion}
+
+A variation of matrix transpose algorithms were developed and parallelized using Pthreads and OpenMp. Based on the results obtained a threaded algorithm does not necessarily mean higher performance there are various factors that should be considered when one parallelizes an algorithm such as data size. The 
+threaded algorithms performed better when the size of the matrix was large but poorly for small matrix sizes.
 
 \justify
-One can further verify the results using numpy for the rank2Tensor procedures. From the algorithm analysis it is evident that computationally complexity increases with the rank and dimensions of the tensor. The procedures developed in this lab are presented for $n\times n$ or $n\times n\times n$ however modifications may be made to make them more flexible to work in varying dimensions.
 
+\newpage
+\begin{thebibliography}{9}
+\bibitem{Pthreads} 
+Pthreads
+\\\textit{https://computing.llnl.gov/tutorials/pthreads/}. 
 
+ 
+\bibitem{OpenMP} 
+OpenMP
+\\\textit{https://computing.llnl.gov/tutorials/openMP/}. 
+
+ 
+\bibitem{Jaka's corner} 
+OpenMP: For & Scheduling
+\\\texttt{http://jakascorner.com/blog/2016/06/omp-for-scheduling.html}
+\end{thebibliography}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \appendix
@@ -108,10 +134,9 @@ One can further verify the results using numpy for the rank2Tensor procedures. F
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Swap}\\
+\textbf{Function name:} \emph{Swap}\\\vspace{10pt}
 Input arguments:\: int* num1, int* num2\\
 
-\vspace{10pt} 
 Initialization\:long int temp = 0\\
      temp = *num\\
     *num1 = *num2\\
@@ -125,7 +150,7 @@ Initialization\:long int temp = 0\\
 \subsection{Naive Approach}
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*CreateMatrix}\\
+\textbf{Function name:} \emph{*CreateMatrix}\\\vspace{10pt}
 Input arguments:\:matrixSize\\
 
 Initialization\::\\ 
@@ -143,7 +168,7 @@ Initialization\::\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Transpose}\\
+\textbf{Function name:} \emph{Transpose}\\\vspace{10pt}
 Input arguments:\: int* arr, int matrixSize \\
 
 \vspace{10pt} 
@@ -153,7 +178,6 @@ Input arguments:\: int* arr, int matrixSize \\
 
 \caption{Void Transpose Function}
 \end{algorithm}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -163,11 +187,11 @@ Input arguments:\: int* arr, int matrixSize \\
 int NumberOfThreads = 8\\
 int nextPosition = 1\\
 int *arr\\
-
+\vspace{10pt}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*CreateMatrix}\\
+\textbf{Function name:} \emph{*CreateMatrix}\\\vspace{10pt}
 Initialization\::\\
 int *C = (int *)calloc(matrixSize * matrixSize, sizeof(int))\\
 val = 1
@@ -183,7 +207,7 @@ val = 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*Transpose}\\
+\textbf{Function name:} \emph{*Transpose}\\\vspace{10pt}
 Initialization\::\\
 struct details* local = args\\
 pos= 0, n= 0, nextPosition= 1\\
@@ -194,10 +218,10 @@ pos= 0, n= 0, nextPosition= 1\\
         \For{j = pos+1 to matrixSize-1}{swap((arr + pos*matrixSize + j),(arr + j*matrixSize + pos))\\
         }break
     }
-    \textbf{pthreadmMutexLock(\&lock)}\\
+    \textbf{pthread\_mutex\_lock(\&lock)}\\
 	n = nextPosition++\\
 	local->index = n\\
-	\textbf{pthreadMutexUnlock(\&lock)}\\
+	\textbf{pthread\_mutex\_unlock(\&lock)}\\
     
 }
 \caption{Void Transpose Function}
@@ -206,11 +230,11 @@ pos= 0, n= 0, nextPosition= 1\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Main Function}\\
+\textbf{Function name:} \emph{Main Function}\\\vspace{10pt}
 Initialization\::\\
 matrixSize={128, 1024, 2048 ,4096}\\
 struct details args[NumberOfThreads]\\
-pthread-t threads[matrixSize]\\
+pthread\_t threads[matrixSize]\\
 
 \vspace{3pt} 
 \textbf{Call to Create\::}\\
@@ -219,13 +243,13 @@ arr = CreateMatrix(matrixSize)\\
 \vspace{10pt} 
 \For{i=0  to NumberOfThreads}{
      args[i].index = i\\
-	 \textbf{pthread-create(\&threads[i],NULL, transpose,(void*) \&args)}\\
+	 \textbf{pthread\_create(\&threads[i],NULL, transpose,(void*) \&args)}\\
 }
 
 \vspace{10pt} 
 \For{i=0  to NumberOfThreads}{
      args[i].index = i\\
-	 \textbf{pthread-join(threads[i],NULL)}\\
+	 \textbf{pthread\_join(threads[i],NULL)}\\
 }
 exit(0)
 
@@ -233,24 +257,24 @@ exit(0)
 \end{algorithm}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
+\vspace{20pt}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Diagonal Approach - OpenMP}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \textbf{Global Variables:} \\
 int NumberOfThreads = 8\\
-
+\vspace{10pt}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*CreateMatrix}\\
+\textbf{Function name:} \emph{*CreateMatrix}\\\vspace{10pt}
 Input arguments:\:matrixSize\\
 Initialization\::\\
 int *arr = (int *)calloc(size * size, sizeof(int))\\
 val = 1;
 
 \vspace{10pt} 
-\textbf{pragma omp for schedule (static, size)}\\
+\textbf{\#pragma omp for schedule (static, size)}\\
 \For{i=0  to size-1}{
     \For{j= 0 to size-1}{*(arr + i*size + j) = val++
 }}
@@ -261,18 +285,18 @@ val = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*Transpose}\\
+\textbf{Function name:} \emph{*Transpose}\\\vspace{10pt}
 Input arguments:\:matrixSize, int*arr\\
 Initialization\::pos= 0,\\
 
 \vspace{10pt} 
 \While{pos < matrixSize}{pos = local->index\\
-\textbf{pragma omp parallel shared(pos) private( i, j) num-threads(NumberOfThreads}\\ 
+\textbf{\#pragma omp parallel shared(pos) private( i, j) num-threads(NumberOfThreads}\\ 
     \For{i=pos  to matrixSize-1}{
         \For{j = pos+1 to matrixSize-1}{swap((arr + pos*matrixSize + j),(arr + j*matrixSize + pos))\\
         }break
     }
-    \textbf{pragma omp critical}{pos++;}
+    \textbf{\#pragma omp critical}{pos++;}
 
 }
 \caption{Void Transpose Function}
@@ -281,7 +305,7 @@ Initialization\::pos= 0,\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Main Function}\\
+\textbf{Function name:} \emph{Main Function}\\\vspace{10pt}
 Initialization\::\\
 matrixSize={128, 1024, 2048 ,4096}\\
 
@@ -294,34 +318,33 @@ matrixSize={128, 1024, 2048 ,4096}\\
 \caption{Main Function - OpenMP}
 \end{algorithm}
 
-
+\vspace{20pt}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Commonly Used Functions in Block Algorithm}
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{void createMatrix}\\
-Initialization\::long int val=1, vector<long int> num\\
+\textbf{Function name:} \emph{void createMatrix}\\\vspace{10pt}
+Initialization\::long int val=1\\
 
 \vspace{10pt} 
-\For{i=0  to matrixSize-1}{
-    \For{j= 0 to matrixSize-1}{
-            num.pushBack(val)\\
+\For{i=0  to size\_mat-1}{
+    \For{j= 0 to size\_mat-1}{
+            MAT [i][j] = val\\
             val++\\
-}MATRIX.pushBack(num);
-           num.clear();}
+}
+}
 \caption{Void Function to Create and Populate Input Matrix}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{tensor getSubMatrix}\\
-Input arguments:\: int A, int B\\
-Initialization\::\\tensor sub(block-len,vector<long int>(block-len))\\
+\textbf{Function name:} \emph{void getSubMatrix}\\\vspace{10pt}
+Input arguments:\: int A, int B\\long int (\&arr)[block\_len][block\_len])\\
 
 \vspace{10pt} 
 \For{i=0  to block-length}{
-    \For{j= 0 to block-length}{sub[i][j] = MATRIX[A+i][B+j]\\
+    \For{j= 0 to block\_len}{arr[i][j] = MAT[A+i][B+j];\\
 }}
 \caption{Void Function to get SubMatrix}
 \end{algorithm}
@@ -329,12 +352,12 @@ Initialization\::\\tensor sub(block-len,vector<long int>(block-len))\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{tensor setSubMatrix}\\
-Input arguments:\: int A, int B, tensor Block\\
+\textbf{Function name:} \emph{void setSubMatrix}\\\vspace{10pt}
+Input arguments:\: int A, int B\\const long int (&block)[block\_len][block\_len])\\
 
 \vspace{10pt} 
-\For{i=0  to block-length}{
-    \For{j= 0 to block-length}{MATRIX[A+i][B+j]=block[i][j]\\
+\For{i=0  to block\_len}{
+    \For{j= 0 to block\_len}{MAT[A+i][B+j]= block[i][j]\\
 }}
 \caption{Void Function to set SubMatrix}
 \end{algorithm}
@@ -342,72 +365,72 @@ Input arguments:\: int A, int B, tensor Block\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{void transpose}\\
-Input arguments:\: int matrixSize\\
-Initialization\:: size = arr.size()\\
+\textbf{Function name:} \emph{void transpose}\\\vspace{10pt}
+Input arguments:\: long int (&arr)[block\_len][block\_len]\\
 
 \vspace{10pt} 
-\For{i=0  to matrixSize-1}{
-    \For{j= 0 to matrixSize-1}{swap(arr[i][j],arr[j][i])\\
+\For{i=0  to size\_mat-1}{
+    \For{j= 0 to size\_mat-1}{swap(arr[i][j],arr[j][i])\\
 }}
-\caption{Void Function to perform normal 2D x 2D Transformations}
+\caption{Void Function to perform normal 2x2 Transformations}
 \end{algorithm}
 
+\newpage
 \subsection{Block Approach - OpenMP}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \textbf{Global Variables:} \\
 
-using tensor = vector <vector<long int>>\\
-int block-len=2\\
-long int size-mat = 8\\
-tensor MATRIX\\
-const int NumberOfThreads=8\\
-int nextPosition=NumberOfThreads\\
+const int block\_len = 2\\ 
+const int size\_mat = 4096\\
+long int MAT[size\_mat][size\_mat]\\
+const int NUM\_THREADS=8\\
+int next-pos = NUM\_THREADS\\
 
-
+\vspace{10pt}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
 \textbf{Function name:} \emph{void shuffle}\\
-
 \vspace{10pt} 
-    \textbf{pragma omp parallel num-threads(NUM-THREADS)}
+    \textbf{\#pragma omp parallel num\_threads(NUM\_THREADS)}
 
-\For{i=0  to matrixSize-1}{i+=block-length\\
-    \textbf{pragma omp for schedule(static,size-mat) nowait}
-    \For{j= 0 to matrixSize-1}{j+=block-length\\
-            tensor block = getSubMatrix(i,j)\\
-            tensor block2 = getSubMatrix(j,i)\\
-            setSubMatrix(i,j,block2)\\
-            setSubMatrix(j,i,block)\\
-}}
+\For{i=0  to size\_mat-1}{
+    \textbf{\#pragma omp for schedule(static,size\_mat) nowait}\\
+    \For{j= 0 to size\_mat-1}{
+           getSubMatrix(i,j,block)\\
+           getSubMatrix(j,i,block2)\\
+           setSubMatrix(i,j,block2)\\
+           setSubMatrix(j,i,block)\\
+           j+=block\_length\\
+}i+=block\_length\\}
 \caption{Void Function to Transpose actual bigger blocks}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*void transpose-blocks}\\
-Initialization\::int thread-counter = 0\\
-    long local = thread-counter\\
-    thread-counter++, int pos = 0\\
-    int posY = 0 , int tmp = size-mat/block-len\\
-    int x = 0 , tensor block\\
+\textbf{Function name:} \emph{void transpose\_blocks}\\\vspace{10pt}
+Initialization\::int thread\_counter = 0\\
+
 
 \vspace{10pt} 
-\textbf{pragma omp parallel shared (thread-counter) num-threads(NumberOfThreads)}\\
+\textbf{\#pragma omp parallel shared (thread\_counter) num\_threads(NUM\_THREADS)}\\
+    Initialization\::long local = thread\_counter\\
+    thread\_-counter++, int pos = 0\\
+    int posY = 0 , int tmp = size\_mat/block\_len\\
+    int x = 0 , long int block[block\_len][block\_len]\\
 \While{1}{
-        pos = (block-len*local)\\
+        pos = (block\_len*local)\\
         x = local/tmp\\
-        posY = x*block-len\\
+        posY = x*block\_len\\
         \eIf {posY >= size-mat}{break}{\\
-        block = getSubMatrix(posY,pos)\\
+        getSubMatrix(posY,pos,block)\\
         transpose(block)\\
         setSubMatrix(posY,pos,block)\\
 
-        \textbf{pragma omp critical}\\
-            local= next-pos\\
-            next-pos++
+        \textbf{#pragma omp critical}\\
+            local= next\_pos\\
+            next\_pos++
 	  }
 }
 \caption{Void Transpose Function: Transposes all inner blocks of matrix}
@@ -416,10 +439,9 @@ Initialization\::int thread-counter = 0\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Main Function}\\
-\textbf{Call to Create\::}\\
+\textbf{Function name:} \emph{Main Function}\\\vspace{10pt}
 CreateMatrix()\\
-transpose-blocks()\\
+transpose\_blocks()\\
 shuffle()\\
 \Return(0)\\
 
@@ -428,58 +450,61 @@ shuffle()\\
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Block Approach - PThreads}
 \textbf{Global Variables:} \\
-int block-len=2\\
-long int size-mat =8\\
-tensor MATRIX\\
-const int NUM-THREADS=8\\
-int next-pos=NUM-THREADS\\
-pthread-mutex-t lock\\
+const int block\_len = 2\\
+const int size\_mat = 4096\\
+long int MAT[size\_mat][size\_mat]\\
+const int NUM\_THREADS = 8\\
+int next\_pos=NUM\_THREADS\\
+pthread\_mutex\_t lock\\
+\vspace{10pt}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{void shuffle}\\
-
+\textbf{Function name:} \emph{void shuffle}\\\vspace{10pt}
+Initialization\::long int block[block\_len][block\_len]\\
+      long int block2[block\_len][block\_len];\\
 \vspace{10pt} 
-\For{i=0  to matrixSize-1}{i+=block-length\\
-    \For{j= 0 to matrixSize-1}{j+=block-length\\
-            tensor block = getSubMatrix(i,j)\\
-            tensor block2 = getSubMatrix(j,i)\\
+\For{i=0  to size\_mat-1}{
+    \For{j= 0 to size\_mat-1}{
+            getSubMatrix(i,j,block)\\
+            getSubMatrix(j,i,block2)\\
             setSubMatrix(i,j,block2)\\
             setSubMatrix(j,i,block)\\
-}}
+            j+=block\_length\\
+}i+=block\_length\\}
 \caption{Void Function to Transpose actual bigger blocks}
 \end{algorithm}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{*void transpose-blocks}\\
-Initialization\::int thread-counter = 0\\
-    long local = thread-counter\\
-    thread-counter++, int pos = 0\\
-    int posY = 0 , int tmp = size-mat/block-len\\
-    int x = 0 , tensor block\\
+\textbf{Function name:} \emph{*void transpose\_blocks(void* \_ind)}\\\vspace{10pt}
+Initialization\::long local\\
+    local = (long) \_ind\\
+    int pos\\
+    int posY = 0 , int tmp = size\_mat/block\_len\\
+    int x = 0 , long int block[block\_len] [block\_len]
 
 \vspace{10pt} 
 
 \While{1}{
-        pos = (block-len*local)\\
+        pos = (block\_len*local)\\
         x = local/tmp\\
-        posY = x*block-len\\
-        \eIf {posY >= size-mat}{break}{\\
-        block = getSubMatrix(posY,pos)\\
+        posY = x*block\_len\\
+        \eIf {posY >= size\_mat}{break}{\\
+        block = getSubMatrix(posY,pos,block)\\
         transpose(block)\\
         setSubMatrix(posY,pos,block)\\
 
-        \textbf{pthread-mutex-lock(\&lock)}\\
-            local= next-pos\\
-            next-pos++\\
-        \textbf{pthread-mutex-unlock(&lock)}
+        \textbf{pthread\_mutex\_lock(\&lock)}\\
+            local= next\_pos\\
+            next\_pos++\\
+        \textbf{pthread\_mutex\_unlock(&lock)}
 	  }
 }
 \caption{Void Transpose Function: Transposes all inner blocks of matrix}
@@ -488,21 +513,22 @@ Initialization\::int thread-counter = 0\\
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{algorithm}[H]
 \SetAlgoLined
-\textbf{Function name:} \emph{Main Function}\\
+\textbf{Function name:} \emph{Main Function}\\\vspace{10pt}
 \textbf{Call to Create\::}\\
 CreateMatrix()\\
-Initialization\::int index[NUM-THREADS]\\
-
-\textbf{pthread-t threads[NUM-THREADS]}
+Initialization\::int index[NUM\_THREADS]\\
+pthread\_t threads[NUM\_THREADS]
 
 \vspace{10pt} 
-\For{i=0  to NUM-THREADS-1}{
+\For{i=0  to NUM\_THREADS-1}{
 index[i]=i\\
-pthread-create(&threads[i],NULL,transpose-blocks,(void*)index[i])\\
+pthread\_create(&threads[i],NULL,transpose\_blocks,(void*)index[i])\\
 }
-\For{i=0  to NUM-THREADS-1}{
-pthread-join(threads[i],NULL)\\
+\For{i=0  to NUM\_THREADS-1}{
+pthread\_join(threads[i],NULL)\\
 }
+
+Shuffle()\\
 \Return(0)\\
 
 \caption{Main Function - PThreads}
