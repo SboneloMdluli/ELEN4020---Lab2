@@ -62,7 +62,7 @@ Open specifications for Multi Processing (OpenMP) offers a high level shared mem
 \subsection{Naive}
 The naive implementation of the matrix transposition algorithm is heavily based on the basic algorithm. To parallelize the nested for-loops two compiler directives are used namely :
 \newline
-{\#pragma omp parallel shared(arr) private( i, j) num_threads(NUM\_THREADS) } 
+{\#pragma omp parallel shared(arr) private( i, j) num\_threads(NUM\_THREADS) }
 \newline
 {\#pragma omp for schedule(static,size)  nowait}
 \newline
@@ -78,7 +78,7 @@ The implementation of the block-oriented transposition with OpenMP is almost ide
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results and Analysis}\
 % Please add the following required packages to your document preamble:
-Table 5.1 contains the results for the different algorithms discussed in the previous sections. The code for each algorithm are run on computers with the same specifications. Some of these are: Windows 10, Intel Core i7-6700 CPU with 3.41 GHz speed and 4 cores with 8 logical processors.
+Table 5.1 contains the results for the different algorithms discussed in the previous sections. The code for each algorithm are run on computers with the same specifications. Some of these are: Ubuntu 16.04, Intel Core i7-6700 CPU with 3.41 GHz speed and 4 cores with 8 logical processors.
 
 \begin{table}
 \centering
